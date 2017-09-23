@@ -13,10 +13,39 @@ var atom = require('falcor-json-graph').atom;
 var MaxRetryExceededError = require('./../../../lib/errors/MaxRetryExceededError');
 var strip = require('./../../cleanData').stripDerefAndVersionKeys;
 var isAssertionError = require('./../../isAssertionError');
-
+var HttpDataSource = require('falcor-http-datasource');
 
 describe('DataSource Only', function() {
     var dataSource = new LocalDataSource(cacheGenerator(0, 2, ['title', 'art'], false));
+
+    it.only('should work.', function(done) {
+        var model = new Model({
+            source: new HttpDataSource('http://localhost:8000/model.json'),
+            cache: {
+                videos: {
+                  "30": {
+                    title: 'WWWRRONG'
+                  },
+                }
+            }
+        });
+        var onNext = sinon.spy();
+        toObservable(model.
+            get(['videos', '30 ', 'title'])).
+            doAction(onNext, noOp, function() {
+                expect(onNext.callCount).to.equal(1);
+                expect(strip(onNext.getCall(0).args[0])).to.deep.equals({
+                    json: {
+                        videos: {
+                            '30 ': {
+                                title: 'hoho'
+                            }
+                        }
+                    }
+                });
+            }).
+            subscribe(noOp, done, done);
+    });
 
     describe('Preload Functions', function() {
         it('should get a value from falcor.', function(done) {
